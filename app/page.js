@@ -1,112 +1,281 @@
-import Image from "next/image";
+"use client";
+import React, { useState, useEffect } from 'react';
+import { collection, addDoc, getDocs, deleteDoc, updateDoc, doc } from "firebase/firestore";
+import { db } from './firebase';
 
 export default function Home() {
+  // States
+  const [items, setItems] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [newItem, setNewItem] = useState("");
+  const [newQuantity, setNewQuantity] = useState(1);
+  const [newCategory, setNewCategory] = useState("");
+  const [newExpirationDate, setNewExpirationDate] = useState("");
+  const [editIndex, setEditIndex] = useState(null);
+  const [editItem, setEditItem] = useState("");
+  const [editQuantity, setEditQuantity] = useState(1);
+  const [editCategory, setEditCategory] = useState("");
+  const [editExpirationDate, setEditExpirationDate] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      const querySnapshot = await getDocs(collection(db, "items"));
+      const itemsList = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setItems(itemsList);
+    };
+    fetchItems();
+  }, []);
+
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleFilterCategory = (e) => {
+    setFilterCategory(e.target.value);
+  };
+
+  const filteredItems = items.filter((item) => {
+    return (
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      (filterCategory === "" || item.category === filterCategory)
+    );
+  });
+
+  const handleNewItem = (e) => {
+    setNewItem(e.target.value);
+  };
+
+  const handleNewQuantity = (e) => {
+    setNewQuantity(parseInt(e.target.value));
+  };
+
+  const handleNewCategory = (e) => {
+    setNewCategory(e.target.value);
+  };
+
+  const handleNewExpirationDate = (e) => {
+    setNewExpirationDate(e.target.value);
+  };
+
+  const handleEditItem = (e) => {
+    setEditItem(e.target.value);
+  };
+
+  const handleEditQuantity = (e) => {
+    setEditQuantity(parseInt(e.target.value));
+  };
+
+  const handleEditCategory = (e) => {
+    setEditCategory(e.target.value);
+  };
+
+  const handleEditExpirationDate = (e) => {
+    setEditExpirationDate(e.target.value);
+  };
+
+  const addItem = async (e) => {
+    e.preventDefault();
+    if (newItem.trim() === "") return;
+
+    const newItemData = {
+      name: newItem,
+      quantity: newQuantity,
+      category: newCategory,
+      expirationDate: newExpirationDate,
+    };
+
+    const docRef = await addDoc(collection(db, "items"), newItemData);
+    setItems([...items, { id: docRef.id, ...newItemData }]);
+    setNewItem("");
+    setNewQuantity(1);
+    setNewCategory("");
+    setNewExpirationDate("");
+  };
+
+  const deleteItem = async (id) => {
+    await deleteDoc(doc(db, "items", id));
+    setItems(items.filter(item => item.id !== id));
+  };
+
+  const startEditing = (index) => {
+    const itemToEdit = items[index];
+    setEditIndex(index);
+    setEditItem(itemToEdit.name);
+    setEditQuantity(itemToEdit.quantity);
+    setEditCategory(itemToEdit.category);
+    setEditExpirationDate(itemToEdit.expirationDate);
+  };
+
+  const saveEdit = async (e) => {
+    e.preventDefault();
+    const itemToUpdate = items[editIndex];
+    const updatedItemData = {
+      name: editItem,
+      quantity: editQuantity,
+      category: editCategory,
+      expirationDate: editExpirationDate,
+    };
+
+    await updateDoc(doc(db, "items", itemToUpdate.id), updatedItemData);
+    const updatedItems = items.map((item, index) =>
+      index === editIndex ? { ...item, ...updatedItemData } : item
+    );
+    setItems(updatedItems);
+    setEditIndex(null);
+    setEditItem("");
+    setEditQuantity(1);
+    setEditCategory("");
+    setEditExpirationDate("");
+  };
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.js</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <main className="flex min-h-screen flex-col items-center justify-between sm:p-12 p-4">
+      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm">
+        <h1 className="text-4xl p-4 text-center">Pantry Tracker</h1>
+
+        <div className="bg-emerald-700 p-4 rounded-lg mb-4 text-black w-full">
+          <input
+            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            type="text"
+            placeholder="Search items..."
+            value={searchQuery}
+            onChange={handleSearch}
+          />
         </div>
-      </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-full sm:before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-full sm:after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+        <div className="bg-emerald-700 p-4 rounded-lg mb-4 text-black w-full">
+          <select
+            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            value={filterCategory}
+            onChange={handleFilterCategory}
+          >
+            <option value="">All Categories</option>
+            <option value="Vegetables">Vegetables</option>
+            <option value="Fruits">Fruits</option>
+            <option value="Dairy">Dairy</option>
+            <option value="Beverages">Beverages</option>
+          </select>
+        </div>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+        <div className="bg-emerald-700 p-4 rounded-lg mb-4 w-full">
+          <form className="grid grid-cols-1 sm:grid-cols-6 gap-4 items-center text-black" onSubmit={addItem}>
+            <input
+              className="col-span-3 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              type="text"
+              placeholder="Enter item"
+              value={newItem}
+              onChange={handleNewItem}
+            />
+            <input
+              className="col-span-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              type="number"
+              min="1"
+              placeholder="Quantity"
+              value={newQuantity}
+              onChange={handleNewQuantity}
+            />
+            <select
+              className="col-span-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              value={newCategory}
+              onChange={handleNewCategory}
+            >
+              <option value="">Category</option>
+              <option value="Vegetables">Vegetables</option>
+              <option value="Fruits">Fruits</option>
+              <option value="Dairy">Dairy</option>
+              <option value="Beverages">Beverages</option>
+            </select>
+            <input
+              className="col-span-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              type="date"
+              placeholder="Expiration Date"
+              value={newExpirationDate}
+              onChange={handleNewExpirationDate}
+            />
+            <button
+              className="col-span-1 text-white bg-emerald-800 hover:bg-emerald-600 p-3 text-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              type="submit"
+            >
+              Add
+            </button>
+          </form>
+        </div>
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800 hover:dark:bg-opacity-30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+        <div className="bg-emerald-700 p-4 rounded-lg max-h-64 overflow-y-auto w-full">
+          <ul className="list-disc pl-5">
+            {filteredItems.map((item, index) => (
+              <li key={item.id} className="mb-2 flex justify-between items-center bg-emerald-800 rounded-lg text-white p-2">
+                <div className="flex flex-1 justify-between items-center">
+                  <span className="font-semibold flex-1">{item.name}</span>
+                  <span className="text-center flex-1">{item.quantity}</span>
+                  <span className="text-center flex-1">{item.category}</span>
+                  <span className="text-center flex-1">{item.expirationDate}</span>
+                  <div className="flex-1 text-right">
+                    <button
+                      onClick={() => startEditing(index)}
+                      className="mr-2 text-blue-400 hover:text-blue-600"
+                    >
+                      Edit
+                      </button>
+                    <button
+                      onClick={() => deleteItem(item.id)}
+                      className="text-red-400 hover:text-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore starter templates for Next.js.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{" "}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50 text-balance`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+        {editIndex !== null && (
+          <div className="bg-emerald-700 p-4 rounded-lg mt-4 w-full">
+            <form className="grid grid-cols-1 sm:grid-cols-6 gap-4 items-center text-black" onSubmit={saveEdit}>
+              <input
+                className="col-span-3 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                type="text"
+                placeholder="Edit item"
+                value={editItem}
+                onChange={handleEditItem}
+              />
+              <input
+                className="col-span-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                type="number"
+                min="1"
+                placeholder="Quantity"
+                value={editQuantity}
+                onChange={handleEditQuantity}
+              />
+              <select
+                className="col-span-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                value={editCategory}
+                onChange={handleEditCategory}
+              >
+                <option value="">Category</option>
+                <option value="Vegetables">Vegetables</option>
+                <option value="Fruits">Fruits</option>
+                <option value="Dairy">Dairy</option>
+                <option value="Beverages">Beverages</option>
+              </select>
+              <input
+                className="col-span-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                type="date"
+                placeholder="Expiration Date"
+                value={editExpirationDate}
+                onChange={handleEditExpirationDate}
+              />
+              <button
+                className="col-span-1 text-white bg-emerald-800 hover:bg-emerald-600 p-3 text-xl rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                type="submit"
+              >
+                Save
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </main>
   );
